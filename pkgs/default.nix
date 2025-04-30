@@ -10,6 +10,8 @@ in
   }
 }:
 let self = {
+  datum-gateway = pkgs.callPackage ./datum-gateway { };
+
   clightning-rest = pkgs.callPackage ./clightning-rest { inherit (self) fetchNodeModules; };
   clightning-plugins = pkgs.recurseIntoAttrs (import ./clightning-plugins pkgs self.nbPython3Packages);
   joinmarket = pkgs.callPackage ./joinmarket { inherit (self) nbPython3PackagesJoinmarket; };

@@ -25,6 +25,7 @@
     ./fulcrum.nix
     ./liquid.nix
     ./btcpayserver.nix
+    ./datum-gateway.nix # Add the new datum-gateway module
     ./joinmarket.nix
     ./joinmarket-ob-watcher.nix
     ./hardware-wallets.nix

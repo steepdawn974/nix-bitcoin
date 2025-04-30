@@ -21,5 +21,14 @@ pkgs: pkgsUnstable:
     lnd
     nbxplorer;
 
+  # Version pin for datum-gateway
+  datum-gateway = {
+    version = "0.3.1beta";
+    owner = "OCEAN-xyz";
+    repo = "datum_gateway";
+    rev = "v0.3.1beta";
+    sha256 = "sha256-0soLkz5YFe9ZQKzhp86zIqs7oemBliDvYCg/uLUKMwA=";
+  };
+
   inherit pkgs pkgsUnstable;
 }
