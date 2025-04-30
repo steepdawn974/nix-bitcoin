@@ -1,4 +1,5 @@
-{ lib
+{
+  lib
 , stdenv
 , fetchFromGitHub
 , pkgs
@@ -7,29 +8,30 @@
 , jansson
 , libmicrohttpd
 , libsodium
-, libcurl
+, curl
 , psmisc
+, datum-gateway-src-attrs
 , ...
 }:
 
-let
-  # Source version information from pinned.nix
-  sources = import ../pinned.nix { inherit (pkgs) fetchFromGitHub; };
-  source = sources.datum-gateway;
-in
 stdenv.mkDerivation rec {
   pname = "datum-gateway";
-  version = source.version;
+  version = datum-gateway-src-attrs.version;
 
   src = fetchFromGitHub {
-    owner = source.owner;
-    repo = source.repo;
-    rev = source.rev;
-    sha256 = source.sha256;
+    owner = datum-gateway-src-attrs.owner;
+    repo = datum-gateway-src-attrs.repo;
+    rev = datum-gateway-src-attrs.rev;
+    sha256 = datum-gateway-src-attrs.sha256;
   };
 
+  # Apply patch to disable the problematic Jansson check
+  patches = [ ./0001-disable-jansson-long-long-check.patch ];
+
   nativeBuildInputs = [ cmake pkg-config ];
-  buildInputs = [ jansson libmicrohttpd libsodium libcurl psmisc ];
+  buildInputs = [ jansson libmicrohttpd libsodium curl psmisc ];
+
+  cmakeFlags = [ "-DCMAKE_C_STANDARD=17" ];
 
   buildPhase = "make";
 
