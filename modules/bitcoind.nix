@@ -12,8 +12,8 @@ let
       };
       package = mkOption {
         type = types.package;
-        default = if cfg.implementation == "knots" then pkgs.bitcoind-knots else pkgs.bitcoind;
-        defaultText = "pkgs.bitcoind or pkgs.bitcoind-knots based on implementation";
+        default = if cfg.implementation == "knots" then pkgs.bitcoin-knots else pkgs.bitcoind;
+        defaultText = "pkgs.bitcoind or pkgs.bitcoin-knots based on implementation";
         description = "The package to use.";
       };
       port = mkOption {
@@ -283,7 +283,7 @@ let
         description = "Binary to connect with the bitcoind instance.";
       };
 
-      knotsSpecificOptions = mkOption {
+      knotsSpecificOptions = mkIf (cfg.implementation == "knots") (mkOption {
         type = types.attrsOf types.anything;
         default = {};
         example = { # Example Knots-specific options with Nix types
@@ -340,11 +340,9 @@ let
           # confrw = "bitcoin_rw.conf";
           # settings = "settings.json";
         };
-        description = ''
-          Bitcoin Knots specific configuration options added to bitcoin.conf.
-          Only used when implementation = "knots".
-        '';
-      };
+        description = "Bitcoin Knots specific configuration options added to bitcoin.conf.";
+      });
+
       tor = nbLib.tor;
     };
   };
@@ -422,6 +420,8 @@ let
         in "${name}=${valStr}"
       ) cfg.knotsSpecificOptions
     ))}
+
+    ${extraRpcauth}
   '';
 
   zmqServerEnabled = (cfg.zmqpubrawblock != null) || (cfg.zmqpubrawtx != null);
