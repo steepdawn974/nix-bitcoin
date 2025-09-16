@@ -70,19 +70,38 @@ nix-bitcoin now supports running [Bitcoin Knots](https://bitcoinknots.org/) as a
 
 **To use Bitcoin Knots instead of bitcoind:**
 
-- In your `configuration.nix` (or flake module), set:
+- In your `configuration.nix` (or flake module), set `services.bitcoind.implementation` to `"knots"`:
 
 ```nix
 {
-  services.bitcoind.enable = false;
-  services.bitcoin-knots.enable = true;
-  # Optionally, set Knots-specific options:
-  # services.bitcoin-knots.knotsSpecificOptions = { ... };
+  services.bitcoind = {
+    enable = true;
+    implementation = "knots";
+    # Optionally, set Knots-specific options:
+    knotsSpecificOptions = { ... };
+  };
+}
+```
+- All standard bitcoind configuration options are supported. Knots-specific options can be set via `knotsSpecificOptions`.
+
+Flakes note: enable the overlay
+
+If you are using this project as a flake input in your own system flake and want to source the `bitcoin-knots` package from this fork (instead of the one in your nixpkgs), enable the overlay:
+
+```nix
+{
+  # Make packages (including bitcoin-knots) come from the nix-bitcoin fork overlay
+  nixpkgs.overlays = [ inputs.nix-bitcoin.overlays.default ];
 }
 ```
 
-- Only one of `bitcoind` or `bitcoin-knots` should be enabled at a time.
-- All standard bitcoind configuration options are supported. Knots-specific options can be set via `knotsSpecificOptions`.
+Alternatively, you can set the package explicitly without applying the overlay:
+
+```nix
+{
+  services.bitcoind.package = inputs.nix-bitcoin.legacyPackages.${pkgs.system}.bitcoin-knots;
+}
+```
 
 For more advanced switching (e.g., via Flakes), see the main INSTRUCTIONS.md.
 

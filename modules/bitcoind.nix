@@ -283,7 +283,7 @@ let
         description = "Binary to connect with the bitcoind instance.";
       };
 
-      knotsSpecificOptions = mkIf (cfg.implementation == "knots") (mkOption {
+      knotsSpecificOptions = mkOption {
         type = types.attrsOf types.anything;
         default = {};
         example = { # Example Knots-specific options with Nix types
@@ -341,7 +341,7 @@ let
           # settings = "settings.json";
         };
         description = "Bitcoin Knots specific configuration options added to bitcoin.conf.";
-      });
+      };
 
       tor = nbLib.tor;
     };
@@ -420,8 +420,6 @@ let
         in "${name}=${valStr}"
       ) cfg.knotsSpecificOptions
     ))}
-
-    ${extraRpcauth}
   '';
 
   zmqServerEnabled = (cfg.zmqpubrawblock != null) || (cfg.zmqpubrawtx != null);

@@ -18,6 +18,8 @@ let self = {
   liquid-swap = pkgs.python3Packages.callPackage ./liquid-swap { };
   nbxplorer = pkgs.callPackage ./nbxplorer { };
   rtl = pkgs.callPackage ./rtl { inherit (self) fetchNodeModules; };
+  # Override for Bitcoin Knots provided by this fork
+  bitcoin-knots = pkgs.callPackage ./bitcoin-knots { };
   inherit (pkgs.callPackage ./mempool { inherit (self) fetchNodeModules; })
     mempool-backend
     mempool-frontend
