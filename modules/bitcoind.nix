@@ -12,8 +12,11 @@ let
       };
       package = mkOption {
         type = types.package;
-        default = if cfg.implementation == "knots" then pkgs.bitcoin-knots else pkgs.bitcoind;
-        defaultText = "pkgs.bitcoind or pkgs.bitcoin-knots based on implementation";
+        default = 
+          if cfg.implementation == "knots" then pkgs.bitcoin-knots
+          else if cfg.implementation == "core-lnhance" then pkgs.bitcoin-core-lnhance
+          else pkgs.bitcoind;
+        defaultText = "pkgs.bitcoind, pkgs.bitcoin-knots or pkgs.bitcoin-core-lnhance based on implementation";
         description = "The package to use.";
       };
       port = mkOption {
@@ -265,12 +268,13 @@ let
         description = "The group as which to run bitcoind.";
       };
       implementation = mkOption {
-        type = types.enum [ "core" "knots" ];
+        type = types.enum [ "core" "knots" "core-lnhance" ];
         default = "core";
         description = ''
           Select the Bitcoin implementation to use.
           `core`: Use the standard Bitcoin Core package.
           `knots`: Use the Bitcoin Knots package.
+          `core-lnhance`: Use the Bitcoin Core LNhance package.
         '';
       };
       cli = mkOption {
@@ -281,6 +285,12 @@ let
         '';
         defaultText = "(See source)";
         description = "Binary to connect with the bitcoind instance.";
+      };
+
+      lnhanceSpecificOptions = mkOption {
+        type = types.attrsOf types.anything;
+        default = {};
+        description = "Bitcoin Core LNhance specific configuration options added to bitcoin.conf.";
       };
 
       knotsSpecificOptions = mkOption {
@@ -420,6 +430,17 @@ let
         in "${name}=${valStr}"
       ) cfg.knotsSpecificOptions
     ))}
+
+    # LNhance-specific extra options - handle type conversion
+    ${lib.optionalString (cfg.implementation == "core-lnhance") (lib.concatStringsSep "\n" (
+      mapAttrsToList (name: value:
+        let
+          valStr = if isBool value then (if value then "1" else "0")
+                   else if isInt value then toString value
+                   else toString value; # Default to string conversion
+        in "${name}=${valStr}"
+      ) cfg.lnhanceSpecificOptions
+    ))}
   '';
 
   zmqServerEnabled = (cfg.zmqpubrawblock != null) || (cfg.zmqpubrawtx != null);
@@ -475,7 +496,10 @@ in {
       after = wants;
       wantedBy = [ "multi-user.target" ];
 
-      description = if cfg.implementation == "knots" then "Bitcoin Knots daemon" else "Bitcoin Core daemon";
+      description = 
+        if cfg.implementation == "knots" then "Bitcoin Knots daemon"
+        else if cfg.implementation == "core-lnhance" then "Bitcoin Core LNhance daemon"
+        else "Bitcoin Core daemon";
 
       environment.BITCOIN_DATADIR = cfg.dataDir;
       # Add secrets to path for rpcauth files read by bitcoind
