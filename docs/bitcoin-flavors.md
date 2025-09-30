@@ -103,9 +103,7 @@ Apply the nix-bitcoin overlay to make all packages available through your nixpkg
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nix-bitcoin.url = "github:fort-nix/nix-bitcoin/release";
-    # Or use a local path during development:
-    # nix-bitcoin.url = "path:/path/to/your/nix-bitcoin";
+    nix-bitcoin.url = "github:steepdawn974/nix-bitcoin/bitcoin-flavors";
   };
 
   outputs = { self, nixpkgs, nix-bitcoin }: {
@@ -126,21 +124,6 @@ Apply the nix-bitcoin overlay to make all packages available through your nixpkg
         }
       ];
     };
-  };
-}
-```
-
-### Option 2: Explicit Package Reference
-
-Set the package explicitly without applying the overlay:
-
-```nix
-{
-  services.bitcoind = {
-    enable = true;
-    package = nix-bitcoin.legacyPackages.${pkgs.system}.bitcoin-knots;
-    # Or:
-    # package = nix-bitcoin.legacyPackages.${pkgs.system}.bitcoin-core-lnhance;
   };
 }
 ```

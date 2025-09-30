@@ -40,22 +40,7 @@ stdenv.mkDerivation rec {
   # Fix fuzz test compilation error by adding missing LockInOnTimeout() implementation
   # The LNhance fork added LockInOnTimeout() pure virtual function but didn't update the test mock
   # See: docs/lnhance-fuzz-test-bug-report.md
-  postPatch = ''
-    # Add the missing LockInOnTimeout() method to TestConditionChecker class
-    sed -i '/int MinActivationHeight(const Consensus::Params& params) const override/i\
-    bool LockInOnTimeout(const Consensus::Params\& params) const override\
-    {\
-        return m_lock_in_on_timeout;\
-    }\
-' src/test/fuzz/versionbits.cpp
-
-    # Add the member variable
-    sed -i '/int64_t m_min_activation_height;/a\    bool m_lock_in_on_timeout;' src/test/fuzz/versionbits.cpp
-    
-    # Update the constructor signature and initializer list
-    sed -i 's/TestConditionChecker(int64_t begin, int64_t end, int period, int threshold, int min_activation_height, int bit)/TestConditionChecker(int64_t begin, int64_t end, int period, int threshold, int min_activation_height, int bit, bool lock_in_on_timeout = false)/' src/test/fuzz/versionbits.cpp
-    sed -i 's/: m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, m_bit{bit}/: m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, m_lock_in_on_timeout{lock_in_on_timeout}, m_bit{bit}/' src/test/fuzz/versionbits.cpp
-  '';
+  patches = [ ./0001-fix-versionbits-fuzz-test-missing-LockInOnTimeout.patch ];
 
   nativeBuildInputs = [
     autoreconfHook

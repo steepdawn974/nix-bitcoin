@@ -51,47 +51,22 @@ Add an implementation of `LockInOnTimeout()` to the `TestConditionChecker` class
 
 ### Patch
 
-```diff
---- a/src/test/fuzz/versionbits.cpp
-+++ b/src/test/fuzz/versionbits.cpp
-@@ -36,6 +36,11 @@ class TestConditionChecker : public AbstractThresholdConditionChecker
-         return m_end;
-     }
- 
-+    bool LockInOnTimeout(const Consensus::Params& params) const override
-+    {
-+        return m_lock_in_on_timeout;
-+    }
-+
-     int MinActivationHeight(const Consensus::Params& params) const override
-     {
-         return m_min_activation_height;
-@@ -49,11 +54,13 @@ private:
-     int64_t m_period;
-     int64_t m_threshold;
-     int64_t m_min_activation_height;
-+    bool m_lock_in_on_timeout;
-     int m_bit;
- 
- public:
--    TestConditionChecker(int64_t begin, int64_t end, int period, int threshold, int min_activation_height, int bit)
--        : m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, m_bit{bit}
-+    TestConditionChecker(int64_t begin, int64_t end, int period, int threshold, int min_activation_height, int bit, bool lock_in_on_timeout = false)
-+        : m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, 
-+          m_lock_in_on_timeout{lock_in_on_timeout}, m_bit{bit}
-     {
-     }
- };
-```
+A working patch is available here:
+https://github.com/steepdawn974/nix-bitcoin/blob/bitcoin-flavors/pkgs/bitcoin-core-lnhance/0001-fix-versionbits-fuzz-test-missing-LockInOnTimeout.patch
 
 ### Explanation
 
-1. **Add member variable**: `bool m_lock_in_on_timeout` to store the lock-in-on-timeout behavior
-2. **Implement pure virtual function**: Override `LockInOnTimeout()` to return the stored value
-3. **Update constructor**: Add optional parameter `lock_in_on_timeout` with default value `false` to maintain backward compatibility with existing test instantiations
-4. **Initialize member**: Add `m_lock_in_on_timeout{lock_in_on_timeout}` to the constructor's initializer list
+1. **Add member variable**: `const bool m_lock_in_on_timeout` as a public member (matching the style of other members in the class)
+2. **Initialize in constructor**: Set `m_lock_in_on_timeout{false}` in the constructor's initializer list (no signature change needed)
+3. **Implement pure virtual function**: Add one-line override `LockInOnTimeout()` that returns the member variable (matching the style of other override methods)
 
-The default value of `false` ensures existing test cases continue to work as before, while allowing future tests to explicitly test the LOT=true behavior if needed.
+This minimal fix:
+- Maintains backward compatibility (no constructor signature change)
+- Follows the existing code style (public const members, one-line override methods)
+- Defaults to `false` for LOT (Lock-in On Timeout), which is the conservative default
+- Allows the fuzz tests to compile successfully
+
+**Note**: A complete implementation would add a constructor parameter to allow testing both LOT=true and LOT=false scenarios, but this minimal fix is sufficient to resolve the compilation error.
 
 ## Steps to Reproduce
 
