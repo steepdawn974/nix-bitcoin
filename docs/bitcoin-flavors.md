@@ -148,7 +148,7 @@ Bitcoin Knots supports additional options via `knotsSpecificOptions`:
 ```nix
 knotsSpecificOptions = {
   # Policy options
-  datacarriersize = 82;              # Max size for data carrier txns
+  datacarriersize = 83;              # Max size for data carrier txns
   mempoolfullrbf = true;             # Full RBF logic
   acceptnonstdtxn = true;            # Accept non-standard transactions
   permitbarepubkey = true;           # Permit bare P2PK outputs
