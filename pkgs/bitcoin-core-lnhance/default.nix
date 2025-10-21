@@ -28,19 +28,14 @@
 
 stdenv.mkDerivation rec {
   pname = if withGui then "bitcoin-core-lnhance" else "bitcoind-core-lnhance";
-  version = "28.1-lnhance-b4bc500";
+  version = "28.1-lnhance-790f5e0";
 
   src = fetchFromGitHub {
     owner = "lnhance";
     repo = "bitcoin";
-    rev = "b4bc50067644ef18d5043ce547e905c7c482a601";
-    sha256 = "sha256-KHT8Jsq5mNS9l0lvi9+2v5ZUzar+0HWMNQrWKnW7hFE=";
+    rev = "790f5e0eb610cdfe6cae7971d7b07b5b190cc649";
+    sha256 = "sha256-n75e0xdfnMivPQ2FkOZItq5mC2/JLhoGMqAyizsodJE==";
   };
-
-  # Fix fuzz test compilation error by adding missing LockInOnTimeout() implementation
-  # The LNhance fork added LockInOnTimeout() pure virtual function but didn't update the test mock
-  # See: docs/lnhance-fuzz-test-bug-report.md
-  patches = [ ./0001-fix-versionbits-fuzz-test-missing-LockInOnTimeout.patch ];
 
   nativeBuildInputs = [
     autoreconfHook
@@ -77,8 +72,6 @@ stdenv.mkDerivation rec {
   configureFlags = [
     "--with-boost-libdir=${boost.out}/lib"
     "--disable-bench"
-    # Tests are disabled by default for faster builds, but the patch above
-    # ensures they will compile if doCheck is set to true
     "--disable-tests"
     "--disable-gui-tests"
   ]
@@ -92,8 +85,6 @@ stdenv.mkDerivation rec {
 
   enableParallelBuilding = true;
 
-  # Tests are disabled by default for production builds
-  # The patch above fixes the fuzz test compilation, so tests can be enabled if needed
   doCheck = false;
 
   meta = with lib; {
