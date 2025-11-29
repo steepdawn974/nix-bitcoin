@@ -5,7 +5,7 @@
   '';
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-24.11";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
     extra-container = {
@@ -111,6 +111,8 @@
           (test.pkgs self pkgs) //
           {
             extra-container = self.inputs.extra-container.packages.${system}.default;
+
+            ciTestInfo = import ./test/ci/test-info.nix pkgs legacyPackages.instantiateTests;
           };
 
         apps = rec {

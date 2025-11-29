@@ -1,0 +1,39 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: nix-bitcoin <nix-bitcoin@example.com>
+Date: Mon, 30 Sep 2025 17:00:00 +0200
+Subject: [PATCH] Fix versionbits fuzz test: add missing LockInOnTimeout()
+ implementation
+
+The LNhance fork added a new pure virtual function LockInOnTimeout() to
+AbstractThresholdConditionChecker, but the TestConditionChecker mock class
+in the fuzz test was not updated to implement it, causing compilation failure.
+
+This patch adds the missing implementation to allow the fuzz tests to compile.
+
+See: https://github.com/lnhance/bitcoin/issues/XXX
+---
+ src/test/fuzz/versionbits.cpp | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/test/fuzz/versionbits.cpp b/src/test/fuzz/versionbits.cpp
+index 1234567890..abcdef1234 100644
+--- a/src/test/fuzz/versionbits.cpp
++++ b/src/test/fuzz/versionbits.cpp
+@@ -33,8 +33,9 @@ public:
+     const int m_period;
+     const int m_threshold;
+     const int m_min_activation_height;
++    const bool m_lock_in_on_timeout;
+     const int m_bit;
+ 
+     TestConditionChecker(int64_t begin, int64_t end, int period, int threshold, int min_activation_height, int bit)
+-        : m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, m_bit{bit}
++        : m_begin{begin}, m_end{end}, m_period{period}, m_threshold{threshold}, m_min_activation_height{min_activation_height}, m_lock_in_on_timeout{false}, m_bit{bit}
+     {
+@@ -50,6 +51,7 @@ public:
+     int Period(const Consensus::Params& params) const override { return m_period; }
+     int Threshold(const Consensus::Params& params) const override { return m_threshold; }
++    bool LockInOnTimeout(const Consensus::Params& params) const override { return m_lock_in_on_timeout; }
+     int MinActivationHeight(const Consensus::Params& params) const override { return m_min_activation_height; }
+ 
+     ThresholdState GetStateFor(const CBlockIndex* pindexPrev) const { return AbstractThresholdConditionChecker::GetStateFor(pindexPrev, dummy_params, m_cache); }

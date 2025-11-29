@@ -2,24 +2,25 @@
 pkgs: pkgsUnstable:
 {
   inherit (pkgs)
+    bitcoind-knots
     charge-lnd
+    clboss
+    elementsd
+    extra-container
     fulcrum
     hwi
-    lightning-loop
     lightning-pool
     lndconnect;
 
   inherit (pkgsUnstable)
     bitcoin
     bitcoind
+    bitcoin-knots
     btcpayserver
-    clboss
     clightning
     electrs
-    elementsd
-    extra-container
-    lnd
-    nbxplorer;
+    lightning-loop
+    lnd;
 
   # Version pin for datum-gateway
   datum-gateway = {

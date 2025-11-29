@@ -1,7 +1,7 @@
 { lib
 , stdenvNoCC
-, nodejs-18_x
-, nodejs-slim-18_x
+, nodejs_22
+, nodejs-slim_22
 , fetchNodeModules
 , fetchpatch
 , fetchurl
@@ -9,23 +9,23 @@
 }:
 let self = stdenvNoCC.mkDerivation {
   pname = "rtl";
-  version = "0.15.4";
+  version = "0.15.6";
 
   src = fetchurl {
     url = "https://github.com/Ride-The-Lightning/RTL/archive/refs/tags/v${self.version}.tar.gz";
-    hash = "sha256-vHno0vMtT5fjtDG2hWGDZP2a34JrFWvqfIgIgvOTv08=";
+    hash = "sha256-99Nn07gOKaasdV0OW+92EOHnpyoGhLUEVhrMrMlXFiU=";
   };
 
   passthru = {
-    nodejs = nodejs-18_x;
-    nodejsRuntime = nodejs-slim-18_x;
+    nodejs = nodejs_22;
+    nodejsRuntime = nodejs-slim_22;
 
     nodeModules = fetchNodeModules {
       inherit (self) src nodejs;
       # TODO-EXTERNAL: Remove `npmFlags` when no longer required
       # See: https://github.com/Ride-The-Lightning/RTL/issues/1182
       npmFlags = "--legacy-peer-deps";
-      hash = "sha256-1x2IukpS85hEw3nmHl1dxNF5mXDmEX6H8pHve/MxWks=";
+      hash = "sha256-hWG5T1m0UoE/54fCPVGBJZiP3IIcqBRv/oeud1neG38=";
     };
   };
 

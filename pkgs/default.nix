@@ -16,13 +16,21 @@ let self = {
 
   clightning-rest = pkgs.callPackage ./clightning-rest { inherit (self) fetchNodeModules; };
   clightning-plugins = pkgs.recurseIntoAttrs (import ./clightning-plugins pkgs self.nbPython3Packages);
+  clnrest = pkgs.callPackage ./clnrest { inherit (self.pinned) clightning; };
   joinmarket = pkgs.callPackage ./joinmarket { inherit (self) nbPython3PackagesJoinmarket; };
   lndinit = pkgs.callPackage ./lndinit { };
   liquid-swap = pkgs.python3Packages.callPackage ./liquid-swap { };
+  nbxplorer = pkgs.callPackage ./nbxplorer { };
   rtl = pkgs.callPackage ./rtl { inherit (self) fetchNodeModules; };
+  
+  # Override for Bitcoin Knots, or LNhance provided by this fork
+  bitcoin-knots = pkgs.callPackage ./bitcoin-knots { };
+  bitcoin-core-lnhance = pkgs.callPackage ./bitcoin-core-lnhance { };
+
   inherit (pkgs.callPackage ./mempool { inherit (self) fetchNodeModules; })
     mempool-backend
     mempool-frontend
+    mempool-rust-gbt
     mempool-nginx-conf;
   trustedcoin = pkgs.callPackage ./trustedcoin { };
 

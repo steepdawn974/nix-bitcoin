@@ -10,7 +10,8 @@ rec {
       pyln-proto = clightningPkg ./pyln-proto;
       pyln-bolt7 = clightningPkg ./pyln-bolt7;
       pylightning = clightningPkg ./pylightning;
-      clnrest = clightningPkg ./clnrest;
+      # TODO: Remove after 2026-05-09
+      clnrest = throw "`nbPython3Packages.clnrest` has been replaced with nix-bitcoin pkg `clnrest` (Rust rewrite)";
 
       # Packages only used by joinmarket
       bencoderpyx = callPackage ./bencoderpyx {};
@@ -25,10 +26,6 @@ rec {
 
       # autobahn 20.12.3, required by joinmarketclient
       autobahn = callPackage ./specific-versions/autobahn.nix {};
-      # coincurve 20, required by pyln-proto.
-      coincurve = callPackage ./specific-versions/coincurve_20 {};
-      # scikit-build-core 0_10, required by coincurve.
-      scikit-build-core = callPackage ./specific-versions/scikit-build-core_0_10 {};
     };
 
   nbPython3Packages = (python3.override {

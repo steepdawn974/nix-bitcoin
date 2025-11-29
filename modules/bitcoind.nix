@@ -12,8 +12,11 @@ let
       };
       package = mkOption {
         type = types.package;
-        default = if cfg.implementation == "knots" then pkgs.bitcoind-knots else pkgs.bitcoind;
-        defaultText = "pkgs.bitcoind or pkgs.bitcoind-knots based on implementation";
+        default = 
+          if cfg.implementation == "knots" then pkgs.bitcoin-knots
+          else if cfg.implementation == "core-lnhance" then pkgs.bitcoin-core-lnhance
+          else pkgs.bitcoind;
+        defaultText = "pkgs.bitcoind, pkgs.bitcoin-knots or pkgs.bitcoin-core-lnhance based on implementation";
         description = "The package to use.";
       };
       port = mkOption {
@@ -197,7 +200,7 @@ let
         '';
       };
       dbCache = mkOption {
-        type = types.nullOr (types.ints.between 4 16384);
+        type = types.nullOr (intAtLeast 4);
         default = null;
         example = 4000;
         description = "Override the default database cache size in MiB.";
@@ -265,12 +268,13 @@ let
         description = "The group as which to run bitcoind.";
       };
       implementation = mkOption {
-        type = types.enum [ "core" "knots" ];
+        type = types.enum [ "core" "knots" "core-lnhance" ];
         default = "core";
         description = ''
           Select the Bitcoin implementation to use.
           `core`: Use the standard Bitcoin Core package.
           `knots`: Use the Bitcoin Knots package.
+          `core-lnhance`: Use the Bitcoin Core LNhance package.
         '';
       };
       cli = mkOption {
@@ -281,6 +285,12 @@ let
         '';
         defaultText = "(See source)";
         description = "Binary to connect with the bitcoind instance.";
+      };
+
+      lnhanceSpecificOptions = mkOption {
+        type = types.attrsOf types.anything;
+        default = {};
+        description = "Bitcoin Core LNhance specific configuration options added to bitcoin.conf.";
       };
 
       knotsSpecificOptions = mkOption {
@@ -340,11 +350,9 @@ let
           # confrw = "bitcoin_rw.conf";
           # settings = "settings.json";
         };
-        description = ''
-          Bitcoin Knots specific configuration options added to bitcoin.conf.
-          Only used when implementation = "knots".
-        '';
+        description = "Bitcoin Knots specific configuration options added to bitcoin.conf.";
       };
+
       tor = nbLib.tor;
     };
   };
@@ -422,9 +430,25 @@ let
         in "${name}=${valStr}"
       ) cfg.knotsSpecificOptions
     ))}
+
+    # LNhance-specific extra options - handle type conversion
+    ${lib.optionalString (cfg.implementation == "core-lnhance") (lib.concatStringsSep "\n" (
+      mapAttrsToList (name: value:
+        let
+          valStr = if isBool value then (if value then "1" else "0")
+                   else if isInt value then toString value
+                   else toString value; # Default to string conversion
+        in "${name}=${valStr}"
+      ) cfg.lnhanceSpecificOptions
+    ))}
   '';
 
   zmqServerEnabled = (cfg.zmqpubrawblock != null) || (cfg.zmqpubrawtx != null);
+
+  intAtLeast = n: types.addCheck types.int (x: x >= n) // {
+    name = "intAtLeast";
+    description = "integer >= ${toString n}";
+  };
 in {
   inherit options;
 
@@ -472,7 +496,10 @@ in {
       after = wants;
       wantedBy = [ "multi-user.target" ];
 
-      description = if cfg.implementation == "knots" then "Bitcoin Knots daemon" else "Bitcoin Core daemon";
+      description = 
+        if cfg.implementation == "knots" then "Bitcoin Knots daemon"
+        else if cfg.implementation == "core-lnhance" then "Bitcoin Core LNhance daemon"
+        else "Bitcoin Core daemon";
 
       environment.BITCOIN_DATADIR = cfg.dataDir;
       # Add secrets to path for rpcauth files read by bitcoind
