@@ -1,121 +1,42 @@
-{
-  config,
-  lib,
-  pkgs,
-  ...
-}:
+{ config, lib, pkgs, ... }:
 
 with lib;
 
 let
-  cfg = config.services.datum-gateway;
-  bitcoind = config.services.bitcoind;
-  nbLib = config.nix-bitcoin.lib;
-  types = lib.types;
-
-  # JSON format definition for the config file
-  format = pkgs.formats.json {};
-
-  # Helper to get RPC credentials
-  rpcCreds = nbLib.getBitcoinRpcCreds cfg.rpc bitcoind;
-
-  # Generate the actual configuration content based on module options
-  # Filter out null/empty string options where appropriate to match datum defaults
-  filterAttrs = lib.filterAttrs (n: v: v != null && v != "");
-  configFileContent = {
-    bitcoind = filterAttrs {
-      rpcurl = "http://${nbLib.address bitcoind.rpc.address}:${toString bitcoind.rpc.port}";
-      rpccookiefile = rpcCreds.cookieFile;
-      rpcuser = rpcCreds.user;
-      rpcpassword = cfg.settings.bitcoind.rpcpassword;
-      work_update_seconds = cfg.settings.bitcoind.work_update_seconds;
-      notify_fallback = cfg.settings.bitcoind.notify_fallback;
-    };
-    stratum = filterAttrs {
-      listen_addr = cfg.listenAddress;
-      listen_port = cfg.listenPort;
-      max_clients_per_thread = cfg.settings.stratum.max_clients_per_thread;
-      max_threads = cfg.settings.stratum.max_threads;
-      max_clients = cfg.settings.stratum.max_clients;
-      vardiff_min = cfg.settings.stratum.vardiff_min;
-      vardiff_target_shares_min = cfg.settings.stratum.vardiff_target_shares_min;
-      vardiff_quickdiff_count = cfg.settings.stratum.vardiff_quickdiff_count;
-      vardiff_quickdiff_delta = cfg.settings.stratum.vardiff_quickdiff_delta;
-      share_stale_seconds = cfg.settings.stratum.share_stale_seconds;
-      fingerprint_miners = cfg.settings.stratum.fingerprint_miners;
-      idle_timeout_no_subscribe = cfg.settings.stratum.idle_timeout_no_subscribe;
-      idle_timeout_no_shares = cfg.settings.stratum.idle_timeout_no_shares;
-      idle_timeout_max_last_work = cfg.settings.stratum.idle_timeout_max_last_work;
-    };
-    mining = filterAttrs {
-      pool_address = cfg.settings.mining.pool_address;
-      coinbase_tag_primary = cfg.settings.mining.coinbase_tag_primary;
-      coinbase_tag_secondary = cfg.settings.mining.coinbase_tag_secondary;
-      coinbase_unique_id = cfg.settings.mining.coinbase_unique_id;
-      save_submitblocks_dir = cfg.settings.mining.save_submitblocks_dir;
-    };
-    api = filterAttrs {
-      admin_password = cfg.settings.api.admin_password;
-      listen_addr = cfg.settings.api.listen_addr;
-      listen_port = cfg.settings.api.listen_port;
-      modify_conf = cfg.settings.api.modify_conf;
-    };
-    extra_block_submissions = filterAttrs {
-      urls = cfg.settings.extra_block_submissions.urls;
-    };
-    logger = filterAttrs {
-      log_to_console = cfg.settings.logger.log_to_console;
-      log_to_stderr = cfg.settings.logger.log_to_stderr;
-      log_to_file = cfg.settings.logger.log_to_file;
-      log_file = cfg.settings.logger.log_file;
-      log_rotate_daily = cfg.settings.logger.log_rotate_daily;
-      log_calling_function = cfg.settings.logger.log_calling_function;
-      log_level_console = cfg.settings.logger.log_level_console;
-      log_level_file = cfg.settings.logger.log_level_file;
-    };
-    datum = filterAttrs {
-      pool_host = cfg.settings.datum.pool_host;
-      pool_port = cfg.settings.datum.pool_port;
-      pool_pubkey = cfg.settings.datum.pool_pubkey;
-      pool_pass_workers = cfg.settings.datum.pool_pass_workers;
-      pool_pass_full_users = cfg.settings.datum.pool_pass_full_users;
-      always_pay_self = cfg.settings.datum.always_pay_self;
-      pooled_mining_only = cfg.settings.datum.pooled_mining_only;
-      protocol_global_timeout = cfg.settings.datum.protocol_global_timeout;
-    };
-  };
-
-  # Generate the config file in the Nix store
-  configFile = format.generate "datum-gateway-config.json" configFileContent;
-
-in {
   options.services.datum-gateway = {
-    enable = mkEnableOption "DATUM Gateway service";
+    enable = mkEnableOption "DATUM Gateway, a decentralized mining gateway for OCEAN pool";
 
     package = mkOption {
       type = types.package;
-      default = pkgs.datum-gateway;
-      defaultText = literalExpression "pkgs.datum-gateway";
+      default = config.nix-bitcoin.pkgs.datum-gateway;
+      defaultText = literalExpression "config.nix-bitcoin.pkgs.datum-gateway";
       description = "The DATUM Gateway package to use.";
     };
 
     dataDir = mkOption {
       type = types.path;
       default = "/var/lib/datum-gateway";
-      description = "The directory where DATUM Gateway stores its runtime data (like generated config, logs if not specified elsewhere).";
+      description = "The directory where DATUM Gateway stores its runtime data.";
     };
 
-    # Renamed listenAddress/Port to match config file structure (used under stratum)
     listenAddress = mkOption {
       type = types.str;
       default = "127.0.0.1";
-      description = "IP address for the Stratum Gateway connections to listen on (maps to settings.stratum.listen_addr).";
+      visible = false;  # Hide from documentation
+      description = ''
+        Deprecated: Use `settings.stratum.listen_addr` instead.
+        IP address for the Stratum server to listen on.
+      '';
     };
 
     listenPort = mkOption {
       type = types.port;
       default = 23334;
-      description = "Port for the Stratum Gateway connections (maps to settings.stratum.listen_port).";
+      visible = false;  # Hide from documentation
+      description = ''
+        Deprecated: Use `settings.stratum.listen_port` instead.
+        Port for the Stratum server.
+      '';
     };
 
     user = mkOption {
@@ -126,26 +47,23 @@ in {
 
     group = mkOption {
       type = types.str;
-      default = "datum-gateway";
+      default = cfg.user;
       description = "Group under which DATUM Gateway runs.";
     };
 
-    # Options for connecting to bitcoind RPC (feeds into settings.bitcoind)
-    rpc = nbLib.mkBitcoinRpcOptions "datum-gateway";
+    tor.enforce = nbLib.tor.enforce;
 
     # Nested options mirroring the JSON config structure
     settings = mkOption {
-      type = types.submoduleWith {
-        modules = [{
-          options = {
-            bitcoind = mkOption {
+      type = types.submodule {
+        options = {
+          bitcoind = mkOption {
             type = types.submodule {
               options = {
-                # rpcurl, rpccookiefile, rpcuser are derived automatically
-                rpcpassword = mkOption {
+                rpccookiefile = mkOption {
                   type = types.nullOr types.str;
                   default = null;
-                  description = "RPC password for communication with local bitcoind. Used only if cookie file is not available/configured.";
+                  description = "Path to file to read RPC cookie from for communication with local bitcoind.";
                 };
                 work_update_seconds = mkOption {
                   type = types.int;
@@ -154,8 +72,8 @@ in {
                 };
                 notify_fallback = mkOption {
                   type = types.bool;
-                  default = true;
-                  description = "Fall back to less efficient methods for new block notifications. Can disable if you use blocknotify.";
+                  default = false;
+                  description = "Fall back to less efficient methods for new block notifications. Disabled by default since we use blocknotify.";
                 };
               };
             };
@@ -166,66 +84,90 @@ in {
           stratum = mkOption {
             type = types.submodule {
               options = {
-                # listen_addr and listen_port are derived from top-level options
                 max_clients_per_thread = mkOption {
                   type = types.int;
                   default = 128;
-                  description = "Maximum clients per Stratum server thread";
+                  description = "Maximum clients per Stratum server thread.";
                 };
                 max_threads = mkOption {
                   type = types.int;
                   default = 8;
-                  description = "Maximum Stratum server threads";
+                  description = "Maximum Stratum server threads.";
                 };
                 max_clients = mkOption {
                   type = types.int;
                   default = 1024;
-                  description = "Maximum total Stratum clients before rejecting connections";
+                  description = "Maximum total Stratum clients before rejecting connections.";
                 };
                 vardiff_min = mkOption {
                   type = types.int;
                   default = 16384;
-                  description = "Work difficulty floor";
+                  description = "Work difficulty floor.";
                 };
                 vardiff_target_shares_min = mkOption {
                   type = types.int;
                   default = 8;
-                  description = "Adjust work difficulty to target this many shares per minute";
+                  description = "Adjust work difficulty to target this many shares per minute.";
                 };
                 vardiff_quickdiff_count = mkOption {
                   type = types.int;
                   default = 8;
-                  description = "How many shares before considering a quick diff update";
+                  description = "How many shares before considering a quick diff update.";
                 };
                 vardiff_quickdiff_delta = mkOption {
                   type = types.int;
                   default = 8;
-                  description = "How many times faster than our target does the miner have to be before we enforce a quick diff bump";
+                  description = "How many times faster than our target does the miner have to be before we enforce a quick diff bump.";
                 };
                 share_stale_seconds = mkOption {
                   type = types.int;
                   default = 120;
-                  description = "How many seconds after a job is generated before a share submission is considered stale?";
+                  description = "How many seconds after a job is generated before a share submission is considered stale.";
                 };
                 fingerprint_miners = mkOption {
                   type = types.bool;
                   default = true;
-                  description = "Attempt to fingerprint miners for better use of coinbase space";
+                  description = "Attempt to fingerprint miners for better use of coinbase space.";
                 };
                 idle_timeout_no_subscribe = mkOption {
                   type = types.int;
                   default = 15;
-                  description = "Seconds we allow a connection to be idle without seeing a work subscription? (0 disables)";
+                  description = "Seconds we allow a connection to be idle without seeing a work subscription (0 disables).";
                 };
                 idle_timeout_no_shares = mkOption {
                   type = types.int;
                   default = 7200;
-                  description = "Seconds we allow a subscribed connection to be idle without seeing at least one accepted share? (0 disables)";
+                  description = "Seconds we allow a subscribed connection to be idle without seeing at least one accepted share (0 disables).";
                 };
                 idle_timeout_max_last_work = mkOption {
                   type = types.int;
                   default = 0;
-                  description = "Seconds we allow a subscribed connection to be idle since its last accepted share? (0 disables)";
+                  description = "Seconds we allow a subscribed connection to be idle since its last accepted share (0 disables).";
+                };
+                trust_proxy = mkOption {
+                  type = types.int;
+                  default = -1;
+                  description = "Enable support for the PROXY protocol, trusting up to the specified number of levels deep of proxies (-1 to disable entirely).";
+                };
+                username_modifiers = mkOption {
+                  type = types.attrsOf (types.attrsOf types.int);
+                  default = {};
+                  description = "Modifiers to redirect some portion of shares to alternate usernames. Format: { modifierName = { percentage = 10; }; }";
+                  example = {
+                    "mod1" = {
+                      percentage = 10;
+                    };
+                  };
+                };
+                listen_addr = mkOption {
+                  type = types.str;
+                  default = "127.0.0.1";
+                  description = "IP address for the Stratum server to listen on. Maps to JSON config field `stratum.listen_addr`.";
+                };
+                listen_port = mkOption {
+                  type = types.port;
+                  default = 23334;
+                  description = "Port for the Stratum server. Maps to JSON config field `stratum.listen_port`.";
                 };
               };
             };
@@ -238,18 +180,17 @@ in {
               options = {
                 pool_address = mkOption {
                   type = types.str;
-                  default = ""; # REQUIRED, but default empty to force user input
                   description = "Bitcoin address used for mining rewards. REQUIRED.";
                 };
                 coinbase_tag_primary = mkOption {
                   type = types.str;
-                  default = "DATUM Gateway (nix-bitcoin)";
-                  description = "Text to have in the primary coinbase tag when not using pool (overridden by DATUM Pool)";
+                  default = "DATUM Gateway";
+                  description = "Text to have in the primary coinbase tag when not using pool (overridden by DATUM Pool).";
                 };
                 coinbase_tag_secondary = mkOption {
                   type = types.str;
-                  default = "DATUM User";
-                  description = "Text to have in the secondary coinbase tag (Short name/identifier)";
+                  default = "nix-bitcoin";
+                  description = "Text to have in the secondary coinbase tag (short name/identifier).";
                 };
                 coinbase_unique_id = mkOption {
                   type = types.int;
@@ -257,9 +198,9 @@ in {
                   description = "A unique ID between 1 and 65535. Appended to coinbase. Make unique per instance with same tags.";
                 };
                 save_submitblocks_dir = mkOption {
-                  type = types.nullOr types.path;
+                  type = types.nullOr types.str;
                   default = null;
-                  description = "Directory to save all submitted blocks to as submitblock JSON files (null or empty string disables)";
+                  description = "Directory to save all submitted blocks to as submitblock JSON files (null disables).";
                 };
               };
             };
@@ -273,30 +214,20 @@ in {
                 admin_password = mkOption {
                   type = types.nullOr types.str;
                   default = null;
-                  description = mdDoc ''
+                  description = ''
                     API password for administrative actions/changes (username 'admin').
                     Set to a non-empty string to enable password protection.
-                    If set to `null` or an empty string, the API (if enabled via `listen_port`)
-                    will be accessible without a password (potentially dangerous).
-
-                    **Note:** This password is set directly by the user.
-                    Unlike service-to-service RPC passwords, it is **not** auto-generated
-                    by the nix-bitcoin secrets mechanism because the user needs to know
-                    this password to interact with the API.
-
-                    Users are responsible for securing their Nix configuration if they
-                    set a sensitive password here (e.g., using `sops-nix`).
                   '';
                 };
                 listen_addr = mkOption {
                   type = types.nullOr types.str;
-                  default = null; # Default disabled
-                  description = "IP address to listen for API/dashboard requests (null/empty disables).";
+                  default = null;
+                  description = "IP address to listen for API/dashboard requests (null disables).";
                 };
                 listen_port = mkOption {
                   type = types.port;
                   default = 0;
-                  description = "Port to listen for API/dashboard requests (0=disabled).";
+                  description = "Port to listen for API/dashboard requests (0 disables).";
                 };
                 modify_conf = mkOption {
                   type = types.bool;
@@ -334,7 +265,7 @@ in {
                 log_to_stderr = mkOption {
                   type = types.bool;
                   default = false;
-                  description = "Log console messages to stderr *instead* of stdout.";
+                  description = "Log console messages to stderr instead of stdout.";
                 };
                 log_to_file = mkOption {
                   type = types.bool;
@@ -342,9 +273,9 @@ in {
                   description = "Enable logging of messages to a file.";
                 };
                 log_file = mkOption {
-                  type = types.nullOr types.path;
+                  type = types.nullOr types.str;
                   default = null;
-                  description = "Path to file to write log messages, when enabled (null/empty disables). Relative paths are based on dataDir.";
+                  description = "Path to file to write log messages (null disables).";
                 };
                 log_rotate_daily = mkOption {
                   type = types.bool;
@@ -378,7 +309,7 @@ in {
                 pool_host = mkOption {
                   type = types.nullOr types.str;
                   default = "datum-beta1.mine.ocean.xyz";
-                  description = "Remote DATUM server host/ip for pooled mining (null/empty disables).";
+                  description = "Remote DATUM server host/ip for pooled mining (null disables).";
                 };
                 pool_port = mkOption {
                   type = types.port;
@@ -388,27 +319,27 @@ in {
                 pool_pubkey = mkOption {
                   type = types.nullOr types.str;
                   default = "f21f2f0ef0aa1970468f22bad9bb7f4535146f8e4a8f646bebc93da3d89b1406f40d032f09a417d94dc068055df654937922d2c89522e3e8f6f0e649de473003";
-                  description = "Public key of DATUM server for encrypted connection (null/empty to auto-fetch).";
+                  description = "Public key of DATUM server for encrypted connection (null to auto-fetch).";
                 };
                 pool_pass_workers = mkOption {
                   type = types.bool;
                   default = true;
-                  description = "Pass stratum miner usernames as sub-worker names to the pool (pool_username.miner_username).";
+                  description = "Pass stratum miner usernames as sub-worker names to the pool.";
                 };
                 pool_pass_full_users = mkOption {
                   type = types.bool;
-                  default = false;
-                  description = "Pass stratum miner usernames as raw usernames to the pool (use if multiple payout addresses behind gateway).";
+                  default = true;
+                  description = "Pass stratum miner usernames as raw usernames to the pool (use if putting multiple payout addresses on miners behind this gateway).";
                 };
                 always_pay_self = mkOption {
                   type = types.bool;
                   default = true;
-                  description = "Always include my datum.pool_username payout in my blocks if possible.";
+                  description = "Always include my payout in my blocks if possible.";
                 };
                 pooled_mining_only = mkOption {
                   type = types.bool;
                   default = true;
-                  description = "If DATUM pool unavailable, terminate miner connections (otherwise, solo mine to mining.pool_address).";
+                  description = "If DATUM pool unavailable, terminate miner connections (otherwise, solo mine).";
                 };
                 protocol_global_timeout = mkOption {
                   type = types.int;
@@ -421,64 +352,162 @@ in {
             description = "Settings related to DATUM decentralized pooled mining.";
           };
         };
-      }]; # Close modules array
-      }; # Close type
-      description = "Configuration settings written to the DATUM Gateway JSON config file.";
+      };
       default = {};
-      # Example becomes less critical as options are defined with defaults/descriptions
-      example = literalExpression ''
-        {
-          mining.pool_address = "YOUR_MINING_REWARD_ADDRESS";
-          # logger.log_level_console = 1; # Enable debug logging
-          # api = { listen_addr = "0.0.0.0"; listen_port = 8339; }; # Enable API
-        }
-      '';
+      description = "Configuration settings written to the DATUM Gateway JSON config file.";
     };
-  }; # End of the 'options.services.datum-gateway' attribute set
+  };
+
+  cfg = config.services.datum-gateway;
+  nbLib = config.nix-bitcoin.lib;
+  secretsDir = config.nix-bitcoin.secretsDir;
+  bitcoind = config.services.bitcoind;
+
+  # Filter out null/empty values
+  filterEmpty = lib.filterAttrs (n: v: v != null && v != "" && v != []);
+
+  # Generate the config file content
+  configFileContent = {
+    bitcoind = filterEmpty {
+      rpcurl = "http://${nbLib.address bitcoind.rpc.address}:${toString bitcoind.rpc.port}";
+      rpcuser = bitcoind.rpc.users.public.name;
+      # Password is injected at runtime via preStart
+      rpccookiefile = cfg.settings.bitcoind.rpccookiefile;
+      work_update_seconds = cfg.settings.bitcoind.work_update_seconds;
+      notify_fallback = cfg.settings.bitcoind.notify_fallback;
+    };
+    stratum = filterEmpty {
+      # Use canonical values from settings.stratum
+      # If deprecated top-level options are used, they take precedence for backward compatibility
+      listen_addr = if cfg.listenAddress != "127.0.0.1" 
+                    then cfg.listenAddress 
+                    else cfg.settings.stratum.listen_addr;
+      listen_port = if cfg.listenPort != 23334 
+                    then cfg.listenPort 
+                    else cfg.settings.stratum.listen_port;
+      max_clients_per_thread = cfg.settings.stratum.max_clients_per_thread;
+      max_threads = cfg.settings.stratum.max_threads;
+      max_clients = cfg.settings.stratum.max_clients;
+      vardiff_min = cfg.settings.stratum.vardiff_min;
+      vardiff_target_shares_min = cfg.settings.stratum.vardiff_target_shares_min;
+      vardiff_quickdiff_count = cfg.settings.stratum.vardiff_quickdiff_count;
+      vardiff_quickdiff_delta = cfg.settings.stratum.vardiff_quickdiff_delta;
+      share_stale_seconds = cfg.settings.stratum.share_stale_seconds;
+      fingerprint_miners = cfg.settings.stratum.fingerprint_miners;
+      idle_timeout_no_subscribe = cfg.settings.stratum.idle_timeout_no_subscribe;
+      idle_timeout_no_shares = cfg.settings.stratum.idle_timeout_no_shares;
+      idle_timeout_max_last_work = cfg.settings.stratum.idle_timeout_max_last_work;
+      trust_proxy = cfg.settings.stratum.trust_proxy;
+      username_modifiers = cfg.settings.stratum.username_modifiers;
+    };
+    mining = filterEmpty {
+      pool_address = cfg.settings.mining.pool_address;
+      coinbase_tag_primary = cfg.settings.mining.coinbase_tag_primary;
+      coinbase_tag_secondary = cfg.settings.mining.coinbase_tag_secondary;
+      coinbase_unique_id = cfg.settings.mining.coinbase_unique_id;
+      save_submitblocks_dir = cfg.settings.mining.save_submitblocks_dir;
+    };
+    api = filterEmpty {
+      admin_password = cfg.settings.api.admin_password;
+      listen_addr = cfg.settings.api.listen_addr;
+      listen_port = cfg.settings.api.listen_port;
+      modify_conf = cfg.settings.api.modify_conf;
+    };
+    extra_block_submissions = filterEmpty {
+      urls = cfg.settings.extra_block_submissions.urls;
+    };
+    logger = filterEmpty {
+      log_to_console = cfg.settings.logger.log_to_console;
+      log_to_stderr = cfg.settings.logger.log_to_stderr;
+      log_to_file = cfg.settings.logger.log_to_file;
+      log_file = cfg.settings.logger.log_file;
+      log_rotate_daily = cfg.settings.logger.log_rotate_daily;
+      log_calling_function = cfg.settings.logger.log_calling_function;
+      log_level_console = cfg.settings.logger.log_level_console;
+      log_level_file = cfg.settings.logger.log_level_file;
+    };
+    datum = filterEmpty {
+      pool_host = cfg.settings.datum.pool_host;
+      pool_port = cfg.settings.datum.pool_port;
+      pool_pubkey = cfg.settings.datum.pool_pubkey;
+      pool_pass_workers = cfg.settings.datum.pool_pass_workers;
+      pool_pass_full_users = cfg.settings.datum.pool_pass_full_users;
+      always_pay_self = cfg.settings.datum.always_pay_self;
+      pooled_mining_only = cfg.settings.datum.pooled_mining_only;
+      protocol_global_timeout = cfg.settings.datum.protocol_global_timeout;
+    };
+  };
+
+  # Generate base config file (password placeholder will be replaced at runtime)
+  configFileBase = pkgs.writeText "datum-gateway-config.json" (builtins.toJSON (
+    configFileContent // {
+      bitcoind = configFileContent.bitcoind // {
+        rpcpassword = "@rpcpassword@";
+      };
+    }
+  ));
+
+in {
+  inherit options;
 
   config = mkIf cfg.enable {
+    assertions = [
+      { assertion = cfg.settings.mining.pool_address != "";
+        message = "services.datum-gateway.settings.mining.pool_address must be set to your Bitcoin address.";
+      }
+    ];
 
-    # Ensure secrets needed for RPC are created
-    secrets.secrets."bitcoin-rpcpassword-${cfg.rpc.user}" = nbLib.mkRpcPasswordSecret cfg.rpc;
+    services.bitcoind = {
+      enable = true;
+      # Add blocknotify to signal datum_gateway when new blocks arrive
+      # This is more efficient than polling for new blocks
+      # Note: We use /run/current-system/sw/bin/killall which is available at runtime
+      # because builtins.toFile (used by bitcoind.nix) cannot reference derivations
+      extraConfig = ''
+        blocknotify=/run/current-system/sw/bin/killall -USR1 datum_gateway
+      '';
+      # Reserve block space for the pool's generation transaction
+      # Required for DATUM pooled mining to work properly
+      knotsSpecificOptions = mkIf (bitcoind.implementation == "knots") {
+        blockmaxsize = mkDefault 3985000;
+      };
+    };
+
+    # Ensure killall (from psmisc) is available system-wide for blocknotify
+    environment.systemPackages = [ pkgs.psmisc ];
+
+    systemd.tmpfiles.rules = [
+      "d '${cfg.dataDir}' 0770 ${cfg.user} ${cfg.group} - -"
+    ];
 
     systemd.services.datum-gateway = {
       description = "DATUM Gateway";
-      after = [ "network.target" "bitcoind.service" "nix-bitcoin-secrets.target" ];
-      requires = [ "bitcoind.service" ];
       wantedBy = [ "multi-user.target" ];
+      requires = [ "bitcoind.service" ];
+      after = [ "bitcoind.service" "nix-bitcoin-secrets.target" ];
 
-      # No preStart needed, config is generated declaratively
+      preStart = ''
+        # Generate config with RPC password
+        ${pkgs.gnused}/bin/sed \
+          "s|@rpcpassword@|$(cat ${secretsDir}/bitcoin-rpcpassword-public)|" \
+          ${configFileBase} > ${cfg.dataDir}/config.json
+      '';
 
       serviceConfig = nbLib.defaultHardening // {
         User = cfg.user;
         Group = cfg.group;
         Restart = "on-failure";
-        # WorkingDirectory should be dataDir for relative paths in config (e.g., log_file)
+        RestartSec = "10s";
         WorkingDirectory = cfg.dataDir;
-        ExecStart = ''
-          ${cfg.package}/bin/datum_gateway --config ${configFile}
-        '';
-        # Config file needs to be readable by the user
-        # SupplementaryGroups = [ config.users.groups.${rpcCreds.group}.name ]; # Might be needed if cookie is restrictive
-        # Consider LoadCredential= for the password if not using cookie?
-
-        # State directory for runtime data
-        StateDirectory = baseNameOf cfg.dataDir;
-        StateDirectoryMode = "0750";
-        LogsDirectory = "datum-gateway"; # Separate logs dir if needed
-        LogsDirectoryMode = "0750";
-        ConfigurationDirectory = "datum-gateway"; # For config snippets?
-        ConfigurationDirectoryMode = "0750";
-        ReadWritePaths = [ cfg.dataDir ]; # Ensure write access to dataDir
-      };
+        ExecStart = "${cfg.package}/bin/datum_gateway --config ${cfg.dataDir}/config.json";
+        ReadWritePaths = [ cfg.dataDir ];
+      } // nbLib.allowedIPAddresses cfg.tor.enforce;
     };
 
-    # Create user/group
     users.users.${cfg.user} = {
       isSystemUser = true;
       group = cfg.group;
-      home = cfg.dataDir;
-      extraGroups = nbLib.bitcoinRpcExtraGroups cfg.rpc; # For cookie access
+      extraGroups = [ "bitcoinrpc-public" ];
     };
     users.groups.${cfg.group} = {};
   };

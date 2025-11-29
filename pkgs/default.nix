@@ -12,7 +12,7 @@ in
 let self = {
   # Pass the specific pinned attributes needed by the package
   # Override jansson with the unstable version
-  datum-gateway = pkgs.callPackage ./datum-gateway { datum-gateway-src-attrs = self.pinned.datum-gateway; jansson = pkgsUnstable.jansson; };
+  datum-gateway = pkgs.callPackage ./datum-gateway { datum-gateway-src-attrs = self.pinned.datum-gateway-src; jansson = pkgsUnstable.jansson; };
 
   clightning-rest = pkgs.callPackage ./clightning-rest { inherit (self) fetchNodeModules; };
   clightning-plugins = pkgs.recurseIntoAttrs (import ./clightning-plugins pkgs self.nbPython3Packages);
