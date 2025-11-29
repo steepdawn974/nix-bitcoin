@@ -27,11 +27,11 @@
 
 stdenv.mkDerivation rec {
   pname = if withGui then "bitcoin-knots" else "bitcoind-knots";
-  version = "29.2.knots20251010";
+  version = "29.2.knots20251110";
 
   src = fetchurl {
-    url = "https://bitcoinknots.org/files/29.x/29.2.knots20251010/bitcoin-29.2.knots20251010.tar.gz";
-    sha256 = "sha256-p3omcfgX57reHXQX3IG8FPmMy8MHSCN0+D9Hhb24Wck=";
+    url = "https://bitcoinknots.org/files/29.x/29.2.knots20251110/bitcoin-29.2.knots20251110.tar.gz";
+    sha256 = "sha256-ZoFQsrNSkIFdSkiwMX64UnWtjVZu+g+64AV7OjtCcBI=";
   };
 
   nativeBuildInputs =
