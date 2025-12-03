@@ -22,5 +22,15 @@ pkgs: pkgsUnstable:
     lightning-loop
     lnd;
 
+  # Version pin for datum-gateway (source attributes, not the package)
+  # Named with -src suffix to avoid collision with the actual package in default.nix
+  datum-gateway-src = {
+    version = "0.4.0beta";
+    owner = "OCEAN-xyz";
+    repo = "datum_gateway";
+    rev = "v0.4.0beta";
+    sha256 = "sha256-xsrdZ8kpbgYrmRgIuX/0ouYFMPALv0hJKh57pfcIl44=";
+  };
+
   inherit pkgs pkgsUnstable;
 }

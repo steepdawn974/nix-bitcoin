@@ -596,3 +596,226 @@ To work around this and connect via clearnet instead, set this option:
 ```nix
 services.clightning.plugins.trustedcoin.tor.proxy = false;
 ```
+
+# DATUM Gateway
+
+DATUM Gateway is a decentralized mining gateway for the [OCEAN pool](https://ocean.xyz).
+It allows you to mine with your own Bitcoin node while participating in pooled mining,
+giving you control over your block templates.
+
+## Requirements
+
+- A fully synced Bitcoin node (Bitcoin Knots recommended)
+- A Bitcoin address for mining rewards
+- Mining hardware that supports Stratum protocol
+
+## Basic Setup
+
+1. Enable DATUM Gateway in your `configuration.nix`:
+
+   ```nix
+   services.datum-gateway = {
+     enable = true;
+     settings.mining.pool_address = "YOUR_BITCOIN_ADDRESS";
+   };
+   ```
+
+   Replace `YOUR_BITCOIN_ADDRESS` with your Bitcoin address for receiving mining rewards.
+
+2. Deploy your configuration
+
+3. Point your mining hardware to the DATUM Gateway's Stratum server:
+   - Host: Your node's IP address
+   - Port: 23334 (default)
+   - Username: Your Bitcoin address or worker name
+   - Password: Can be left empty or set to `x`
+
+## Configuration Options
+
+### Using Bitcoin Knots (Recommended)
+
+When using Bitcoin Knots, the module automatically configures:
+- `blockmaxsize=3985000` to reserve space for the pool's generation transaction
+- `blocknotify` to efficiently notify DATUM Gateway of new blocks
+
+```nix
+services.bitcoind.implementation = "knots";
+services.datum-gateway = {
+  enable = true;
+  settings.mining.pool_address = "YOUR_BITCOIN_ADDRESS";
+};
+```
+
+### Custom Stratum Settings
+
+The canonical way to configure Stratum settings is via the `settings.stratum` submodule, which matches the JSON config structure:
+
+```nix
+services.datum-gateway = {
+  enable = true;
+  settings = {
+    mining = {
+      pool_address = "YOUR_BITCOIN_ADDRESS";
+      coinbase_tag_primary = "My Mining Operation";
+      coinbase_tag_secondary = "Node1";
+      coinbase_unique_id = 1234;  # Unique ID (1-65535)
+    };
+    stratum = {
+      listen_addr = "0.0.0.0";  # IP address to listen on
+      listen_port = 23334;       # Port to listen on
+      max_clients = 1024;
+      max_clients_per_thread = 128;
+      max_threads = 8;
+      vardiff_min = 16384;
+      vardiff_target_shares_min = 8;
+      trust_proxy = -1;  # Disable PROXY protocol (-1)
+      username_modifiers = {
+        "mod1" = {
+          percentage = 10;
+        };
+      };
+    };
+  };
+};
+```
+
+#### Deprecated Top-Level Options
+
+For backward compatibility, the following top-level options are still supported but deprecated:
+- `services.datum-gateway.listenAddress` → use `settings.stratum.listen_addr` instead
+- `services.datum-gateway.listenPort` → use `settings.stratum.listen_port` instead
+
+If you're using an existing configuration with these options, it will continue to work, but you should migrate to the canonical form for new configurations.
+
+### Enable Web Dashboard/API
+
+```nix
+services.datum-gateway.settings.api = {
+  listen_addr = "127.0.0.1";
+  listen_port = 7152;
+  admin_password = "your-secure-password";
+};
+```
+
+Access the dashboard at `http://127.0.0.1:7152` via SSH tunnel:
+```bash
+ssh -L 7152:127.0.0.1:7152 root@your-node
+```
+
+### Solo Mining Fallback
+
+By default, if the DATUM pool connection is lost, miners are disconnected.
+To enable solo mining fallback instead:
+
+```nix
+services.datum-gateway.settings.datum.pooled_mining_only = false;
+```
+
+### Logging
+
+```nix
+services.datum-gateway.settings.logger = {
+  log_to_console = true;
+  log_to_stderr = false;  # Log to stdout instead of stderr
+  log_to_file = true;
+  log_file = "/var/log/datum-gateway/datum.log";
+  log_rotate_daily = true;
+  log_calling_function = true;
+  log_level_console = 2;  # 0=All, 1=Debug, 2=Info, 3=Warn, 4=Error, 5=Fatal
+  log_level_file = 1;
+};
+```
+
+## Service Management
+
+```bash
+# Check service status
+systemctl status datum-gateway
+
+# View logs
+journalctl -u datum-gateway -f
+
+# Restart service
+systemctl restart datum-gateway
+```
+
+## Connecting Miners
+
+Configure your mining hardware with:
+- **Pool URL**: `stratum+tcp://YOUR_NODE_IP:23334`
+- **Username**: Your Bitcoin address (or any worker name if using `pool_pass_full_users = false`)
+- **Password**: `x` (or empty)
+
+### Worker Names
+
+By default, miner usernames are passed to the pool as sub-worker names.
+This allows tracking individual miners on the pool dashboard.
+
+```nix
+services.datum-gateway.settings.datum = {
+  pool_pass_workers = true;      # Pass as pool_username.miner_username
+  pool_pass_full_users = true;   # Pass raw usernames (for multiple payout addresses)
+  always_pay_self = true;       # Include your payout in blocks when possible
+  pooled_mining_only = true;     # Disconnect miners if pool unavailable
+  protocol_global_timeout = 60;  # Seconds before reconnecting to pool
+};
+```
+
+### Advanced Bitcoin RPC Configuration
+
+For custom Bitcoin node setups:
+
+```nix
+services.datum-gateway.settings.bitcoind = {
+  rpccookiefile = "/var/lib/bitcoind/.cookie";  # Custom RPC cookie path
+  work_update_seconds = 40;                     # Template update interval
+  notify_fallback = false;                      # Use blocknotify only
+};
+```
+
+## Troubleshooting
+
+### Stale Shares
+
+If you see many stale shares:
+1. Ensure your Bitcoin node is well-connected to the network
+2. Check that `blocknotify` is working (logs should show "New block notification")
+3. Consider reducing `work_update_seconds` for faster template updates
+
+### Connection Issues
+
+Check that:
+1. The Bitcoin node is fully synced
+2. RPC credentials are correct (nix-bitcoin handles this automatically)
+3. The Stratum port (23334) is accessible from your miners
+
+### Pool Connection
+
+If the pool connection fails:
+- Check your internet connection
+- Verify the pool host/port settings
+- Check logs for specific error messages
+
+### PROXY Protocol Support
+
+If you're running behind a proxy (like HAProxy), you can enable PROXY protocol support:
+
+```nix
+services.datum-gateway.settings.stratum.trust_proxy = 1;  # Trust 1 level of proxy
+```
+
+Set to `-1` to disable (default), or a positive number to trust that many proxy levels.
+
+### Share Redirection
+
+Redirect a portion of shares to alternate usernames using username modifiers:
+
+```nix
+services.datum-gateway.settings.stratum.username_modifiers = {
+  "backup" = {
+    percentage = 5;  # Redirect 5% of shares to "backup" user
+  };
+};
+```
+
+For more information, see the [DATUM Gateway documentation](https://github.com/OCEAN-xyz/datum_gateway).
