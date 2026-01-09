@@ -25,11 +25,11 @@ pkgs: pkgsUnstable:
   # Version pin for datum-gateway (source attributes, not the package)
   # Named with -src suffix to avoid collision with the actual package in default.nix
   datum-gateway-src = {
-    version = "0.4.0beta";
+    version = "0.4.1beta";
     owner = "OCEAN-xyz";
     repo = "datum_gateway";
-    rev = "v0.4.0beta";
-    sha256 = "sha256-xsrdZ8kpbgYrmRgIuX/0ouYFMPALv0hJKh57pfcIl44=";
+    rev = "v0.4.1beta";
+    sha256 = "sha256-EKU+c22t/vc9FC4wg7+p3C+dJO61ZIGsEn9c1q1TBFQ=";
   };
 
   inherit pkgs pkgsUnstable;
