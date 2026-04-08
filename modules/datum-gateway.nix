@@ -468,7 +468,7 @@ in {
       '';
       # Reserve block space for the pool's generation transaction
       # Required for DATUM pooled mining to work properly
-      knotsSpecificOptions = mkIf (bitcoind.implementation == "knots") {
+      knotsSpecificOptions = mkIf (bitcoind.implementation == "knots" || bitcoind.implementation == "knots-bip110") {
         blockmaxsize = mkDefault 3985000;
       };
     };
