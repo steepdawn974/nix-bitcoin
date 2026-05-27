@@ -27,11 +27,11 @@
 
 stdenv.mkDerivation rec {
   pname = if withGui then "bitcoin-knots" else "bitcoind-knots";
-  version = "29.3.knots20260210";
+  version = "29.3.knots20260508";
 
   src = fetchurl {
-    url = "https://bitcoinknots.org/files/29.x/29.3.knots20260210/bitcoin-29.3.knots20260210.tar.gz";
-    sha256 = "sha256-CO87KbC6W+eMGyBipuwIxHndNqH4PS4PqbKk7JRdToo=";
+    url = "https://bitcoinknots.org/files/29.x/29.3.knots20260508/bitcoin-29.3.knots20260508.tar.gz";
+    sha256 = "sha256-jjrr2sqzL29rZdkMmKGIlSVToSpXfgtY0TUlv9Wd1jA=";
   };
 
   nativeBuildInputs =
@@ -59,6 +59,7 @@ stdenv.mkDerivation rec {
   cmakeFlags = [
     "-DBUILD_TESTS=OFF"
     "-DBUILD_BENCH=OFF"
+    "-DRDTS_CONSENT=RUNTIME_CHECK"
   ]
   ++ [ ("-DWITH_MINIUPNPC=" + (if withUpnp then "ON" else "OFF")) ]
   ++ [ ("-DWITH_SODIUM=ON") ]

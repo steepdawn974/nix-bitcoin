@@ -26,7 +26,6 @@ let self = {
   # Override for Bitcoin Knots, or LNhance provided by this fork
   bitcoin-knots = pkgs.callPackage ./bitcoin-knots { };
   bitcoin-core-lnhance = pkgs.callPackage ./bitcoin-core-lnhance { };
-  bitcoin-knots-bip110 = pkgs.callPackage ./bitcoin-knots-bip110 { };
 
   inherit (pkgs.callPackage ./mempool { inherit (self) fetchNodeModules; })
     mempool-backend

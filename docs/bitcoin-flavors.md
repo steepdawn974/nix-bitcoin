@@ -25,13 +25,6 @@ Bitcoin Core with the LNhance softfork activation parameters (BIPs 119, 348, 349
 - **Package**: `pkgs.bitcoin-core-lnhance`
 - **Homepage**: https://github.com/lnhance/bitcoin
 
-### Bitcoin Knots BIP-110
-A fork of Bitcoin Knots with the BIP-110 UASF (User Activated Soft Fork) activation client. Based on Bitcoin Knots v29.3.knots20260210.
-
-- **Implementation ID**: `"knots-bip110"`
-- **Package**: `pkgs.bitcoin-knots-bip110`
-- **Homepage**: https://github.com/dathonohm/bitcoin
-
 ## Configuration
 
 ### Basic Setup
@@ -42,7 +35,7 @@ To select a Bitcoin implementation, set the `services.bitcoind.implementation` o
 {
   services.bitcoind = {
     enable = true;
-    implementation = "core";  # or "knots", "core-lnhance", or "knots-bip110"
+    implementation = "core";  # or "knots" or "core-lnhance"
     
     # Standard bitcoind options work with all implementations
     prune = 10000;
@@ -98,31 +91,6 @@ To select a Bitcoin implementation, set the `services.bitcoind.implementation` o
 }
 ```
 
-### Using Bitcoin Knots BIP-110
-
-```nix
-{
-  services.bitcoind = {
-    enable = true;
-    implementation = "knots-bip110";
-    
-    # Standard options
-    prune = 10000;
-    
-    # Knots-specific options (inherited from Knots base)
-    knotsSpecificOptions = {
-      rejectparasites = true;
-      rejecttokens = true;
-    };
-    
-    # BIP-110-specific options (if needed)
-    bip110SpecificOptions = {
-      # Add any BIP-110-specific configuration here
-    };
-  };
-}
-```
-
 ## Integration with NixOS Flakes
 
 If you're using nix-bitcoin as a Flake input in your system configuration, you have two options for accessing the custom Bitcoin packages.
@@ -151,7 +119,7 @@ Apply the nix-bitcoin overlay to make all packages available through your nixpkg
           # Now you can use any implementation
           services.bitcoind = {
             enable = true;
-            implementation = "knots";  # or "core-lnhance", "knots-bip110"
+            implementation = "knots";  # or "core-lnhance"
           };
         }
       ];
@@ -208,17 +176,6 @@ lnhanceSpecificOptions = {
 };
 ```
 
-### BIP-110-Specific Options
-
-Bitcoin Knots BIP-110 supports all `knotsSpecificOptions` (since it's based on Knots) plus additional options via `bip110SpecificOptions`:
-
-```nix
-bip110SpecificOptions = {
-  # Add any BIP-110-specific configuration options here
-  # The format is the same as knotsSpecificOptions
-};
-```
-
 ## Troubleshooting
 
 ### Build Failures
@@ -241,4 +198,3 @@ If a package fails to build:
 - [Bitcoin Core Documentation](https://bitcoin.org/en/bitcoin-core/)
 - [Bitcoin Knots Documentation](https://bitcoinknots.org/)
 - [LNhance Proposal](https://github.com/lnhance/bitcoin)
-- [Bitcoin Knots BIP-110](https://github.com/dathonohm/bitcoin)
